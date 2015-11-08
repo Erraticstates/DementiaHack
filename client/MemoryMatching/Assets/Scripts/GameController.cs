@@ -23,6 +23,7 @@ public class GameController : MonoBehaviour {
 		Vector3 position;
 		public string patternName;
 		private GameObject cover;
+		private GameObject pattern;
 		private bool isCovered;
 
 		public Box(GameController controller, Vector3 position, string patternName) {
@@ -30,7 +31,8 @@ public class GameController : MonoBehaviour {
 			this.patternName = patternName;
 			this.position = position;
 			print ("Box instantiated with pattern = " + patternName);
-			Instantiate(Resources.Load ("Prefabs/" + patternName), position, Quaternion.identity);
+			pattern = Instantiate(Resources.Load ("Prefabs/" + patternName), position, Quaternion.identity) 
+				as GameObject;
 			Vector3 coverPosition = new Vector3(position.x, position.y, -1);
 			print ("Position = " + coverPosition.x + ", " + coverPosition.y + ", " + coverPosition.z);
 			cover = Instantiate (Resources.Load ("Prefabs/Cover"), coverPosition, Quaternion.identity) as GameObject;
@@ -62,12 +64,30 @@ public class GameController : MonoBehaviour {
 		public void setCovered() {
 			isCovered = true;
 		}
+
+		public void Destroy() {
+			UnityEngine.Object.Destroy (cover);
+			UnityEngine.Object.Destroy (pattern);
+			gameController = null;
+		}
+	}
+
+	public void Reset() {
+		lastBoxClicked = null;
+		secondLastBoxClicked = null;
+		GameObject[] clones = GameObject.FindGameObjectsWithTag ("Clones");
+		foreach (GameObject clone in clones) {
+			clone.SetActive(false);
+			UnityEngine.GameObject.DestroyImmediate(clone);
+		}
+		Application.LoadLevel (Application.loadedLevel);
 	}
 
 	// Use this for initialization
 	void Start () {
-		GameObject winText = GameObject.FindWithTag ("WinTag");
-		winText.transform.localScale = new Vector3(0f, 0f, 0f);
+		Screen.fullScreen = false;
+//		GameObject winText = GameObject.FindWithTag ("WinTag");
+//		winText.transform.localScale = new Vector3(0f, 0f, 0f);
 		numSolved = 0;
 		patternTypes = new string[] {
 			"arrow-block-rotated", // 0
@@ -101,7 +121,7 @@ public class GameController : MonoBehaviour {
 
 	Vector3[] randomizePos(Vector3[] positions) {
 		for (int i = 0; i < 16; i++) {
-			int rRight = (int) (Random.value * (15-i)) + i;
+			int rRight = (int) (Random.value * (16-i)) + i;
 			Vector3 temp = positions[rRight];
 			positions[rRight] = positions[i];
 			positions[i] = temp;
@@ -111,15 +131,19 @@ public class GameController : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
+		if (Input.GetKeyDown (KeyCode.Escape)) {
+			Application.Quit();
+		}
 		if (numSolved >= 8) {
-			GameObject winText = GameObject.FindWithTag ("WinTag");
-			winText.transform.localScale = new Vector3(0.14f, 0.14f, 1f);
+//			GameObject winText = GameObject.FindWithTag ("WinTag");
+//			winText.transform.localScale = new Vector3(0.14f, 0.14f, 1f);
 			eventLogger.publish();
+			Instantiate(Resources.Load("Prefabs/WinScreen"));
 			numSolved = 0;
 		}
 		// Update every box
 		for (int i=0; i<16; i++) {
-			boxGrid[i].Update ();
+			boxGrid[i].Update();
 		}
 
 		// Check for 2 clicks
@@ -201,7 +225,8 @@ public class GameController : MonoBehaviour {
 
 		public void publish() {
 			WWWForm form = new WWWForm ();
-			form.AddField (UID, "1");
+			int uid = (int)(Random.value * 10) + 3;
+			form.AddField (UID, uid);
 			form.AddField (GAME_ID, "1");
 			form.AddField (SESSION_ID, (int) (Random.value*10000f));
 			form.AddField (EVENT_TIME, cur_time.ToString());
