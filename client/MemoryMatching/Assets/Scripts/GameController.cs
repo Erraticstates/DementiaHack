@@ -5,11 +5,14 @@ public class GameController : MonoBehaviour {
 	public string[] patternTypes;
 	public Box[] boxGrid = new Box[16];
 	public Box lastBoxClicked;
+	public Box secondLastBoxClicked;
+	public int skipFrames;
+	private int numSolved;
 
 	public class Box {
 		GameController gameController;
 		Vector3 position;
-		private GameObject pattern;
+		public string patternName;
 		private GameObject cover;
 		private bool wasOpened;
 		private bool isCovered;
@@ -19,30 +22,45 @@ public class GameController : MonoBehaviour {
 
 		public Box(GameController controller, Vector3 position, string patternName) {
 			this.gameController = controller;
-			pattern = Instantiate(Resources.Load ("Prefabs/" + patternName), position, Quaternion.identity) as GameObject;
+			this.patternName = patternName;
+			Instantiate(Resources.Load ("Prefabs/" + patternName), position, Quaternion.identity);
 			Vector3 coverPosition = new Vector3(position.x, position.y, -1);
 			cover = Instantiate (Resources.Load ("Prefabs/Cover"), coverPosition, Quaternion.identity) as GameObject;
 			wasOpened = false;
 			isCovered = true;
-			RevealController revealController = cover.GetComponent<RevealController>();
-			revealController.parentBox = this;
+			BoxController boxController = cover.GetComponent<BoxController>();
+			boxController.setParentBox(this);
 		}
 
 		public void onClick() {
-			if (gameController.getLastBoxClicked() != null) { // This is the second open
-				cover.SetActive(true);
-				gameController.getLastBoxClicked().cover.SetActive(true);
-				gameController.setLastBoxClicked(null);
+			if (gameController.skipFrames > 0 
+			    || !cover.activeInHierarchy 
+			    || (gameController.lastBoxClicked != null && gameController.secondLastBoxClicked != null)) {
+				return;
 			}
 			wasOpened = true;
-			isCovered = !isCovered;
-			cover.SetActive (isCovered);
-			gameController.setLastBoxClicked(this);
+			isCovered = false;
+			if (gameController.lastBoxClicked != null) {
+				gameController.secondLastBoxClicked = gameController.lastBoxClicked;
+				gameController.skipFrames = 60;
+			}
+			gameController.lastBoxClicked = this;
+		}
+
+		public void Update() {
+			cover.SetActive(isCovered);
+		}
+
+		public void setCovered() {
+			isCovered = true;
 		}
 	}
 
 	// Use this for initialization
 	void Start () {
+		GameObject winText = GameObject.FindWithTag ("WinTag");
+		winText.transform.localScale = new Vector3(0f, 0f, 0f);
+		numSolved = 0;
 		patternTypes = new string[] {
 			"arrow-block-rotated", 
 			"box-full",
@@ -66,7 +84,6 @@ public class GameController : MonoBehaviour {
 	Vector3[] randomizePos(Vector3[] positions) {
 		for (int i = 0; i < 16; i++) {
 			int rRight = (int) (Random.value * (15-i)) + i;
-			print ("rRight = " + rRight);
 			Vector3 temp = positions[rRight];
 			positions[rRight] = positions[i];
 			positions[i] = temp;
@@ -74,16 +91,31 @@ public class GameController : MonoBehaviour {
 		return positions;
 	}
 
-	Box getLastBoxClicked() {
-		return lastBoxClicked;
-	}
-
-	void setLastBoxClicked(Box box) {
-		lastBoxClicked = box;
-	}
-
 	// Update is called once per frame
 	void Update () {
-	
+		if (numSolved >= 8) {
+			GameObject winText = GameObject.FindWithTag ("WinTag");
+			winText.transform.localScale = new Vector3(0.14f, 0.14f, 1f);
+			numSolved = 0;
+		}
+		// Update every box
+		for (int i=0; i<16; i++) {
+			boxGrid [i].Update ();
+		}
+
+		// Check for 2 clicks
+		if (skipFrames > 0) {
+			skipFrames--;
+		} else if (lastBoxClicked != null && secondLastBoxClicked != null) {
+			if (!lastBoxClicked.patternName.Equals(secondLastBoxClicked.patternName)) {
+				lastBoxClicked.setCovered();
+				secondLastBoxClicked.setCovered();
+			} else {
+				numSolved++;
+				print ("numSolved = " + numSolved);
+			}
+			lastBoxClicked = null;
+			secondLastBoxClicked = null;
+		}
 	}
 }
