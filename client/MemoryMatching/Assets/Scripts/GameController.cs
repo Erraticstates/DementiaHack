@@ -23,8 +23,10 @@ public class GameController : MonoBehaviour {
 		public Box(GameController controller, Vector3 position, string patternName) {
 			this.gameController = controller;
 			this.patternName = patternName;
+			print ("Box instantiated with pattern = " + patternName);
 			Instantiate(Resources.Load ("Prefabs/" + patternName), position, Quaternion.identity);
 			Vector3 coverPosition = new Vector3(position.x, position.y, -1);
+			print ("Position = " + coverPosition.x + ", " + coverPosition.y + ", " + coverPosition.z);
 			cover = Instantiate (Resources.Load ("Prefabs/Cover"), coverPosition, Quaternion.identity) as GameObject;
 			wasOpened = false;
 			isCovered = true;
@@ -33,6 +35,7 @@ public class GameController : MonoBehaviour {
 		}
 
 		public void onClick() {
+			print ("onClick");
 			if (gameController.skipFrames > 0 
 			    || !cover.activeInHierarchy 
 			    || (gameController.lastBoxClicked != null && gameController.secondLastBoxClicked != null)) {
@@ -100,17 +103,20 @@ public class GameController : MonoBehaviour {
 		}
 		// Update every box
 		for (int i=0; i<16; i++) {
-			boxGrid [i].Update ();
+			boxGrid[i].Update ();
 		}
 
 		// Check for 2 clicks
 		if (skipFrames > 0) {
+			print("skipFrames = " + skipFrames);
 			skipFrames--;
 		} else if (lastBoxClicked != null && secondLastBoxClicked != null) {
 			if (!lastBoxClicked.patternName.Equals(secondLastBoxClicked.patternName)) {
+				print ("Patterns don't match, resetting!");
 				lastBoxClicked.setCovered();
 				secondLastBoxClicked.setCovered();
 			} else {
+				print ("New pattern solved!");
 				numSolved++;
 				print ("numSolved = " + numSolved);
 			}
